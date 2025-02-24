@@ -3,7 +3,14 @@ spring:
     url: "jdbc:mysql://localhost:3307/user-service"
     username: root
     password: root
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
 server:
   port: 8080
   servlet:
     context-path: /identity
+jwt:
+  signerKey: "j6P3vC3TOHmQHx0gkSDX3lTGDNL1R5TVuMZz5xFve6H79F/VqtlzSQquX53/Qstm"
