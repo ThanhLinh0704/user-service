@@ -1,6 +1,7 @@
 package linhlt.user_service.dto.response;
 
 
+import linhlt.user_service.entity.Role;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -19,5 +20,5 @@ public class UserResponse {
     String firstName;
     String lastName;
     LocalDate birthday;
-    Set<String> roles;
+    Set<Role> roles;
 }

@@ -5,12 +5,13 @@ import java.util.Set;
 import javax.annotation.processing.Generated;
 import linhlt.user_service.dto.request.UserRequest;
 import linhlt.user_service.dto.response.UserResponse;
+import linhlt.user_service.entity.Role;
 import linhlt.user_service.entity.User;
 import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-02-27T13:58:43+0700",
+    date = "2025-03-03T11:34:22+0700",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.3 (Oracle Corporation)"
 )
 @Component
@@ -46,9 +47,9 @@ public class UserMapperImpl implements UserMapper {
         userResponse.firstName( user.getFirstName() );
         userResponse.lastName( user.getLastName() );
         userResponse.birthday( user.getBirthday() );
-        Set<String> set = user.getRoles();
+        Set<Role> set = user.getRoles();
         if ( set != null ) {
-            userResponse.roles( new LinkedHashSet<String>( set ) );
+            userResponse.roles( new LinkedHashSet<Role>( set ) );
         }
 
         return userResponse.build();

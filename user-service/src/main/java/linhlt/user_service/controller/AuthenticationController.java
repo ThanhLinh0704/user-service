@@ -3,6 +3,7 @@ package linhlt.user_service.controller;
 import com.nimbusds.jose.JOSEException;
 import linhlt.user_service.dto.request.AuthenticationRequest;
 import linhlt.user_service.dto.request.IntrospectRequest;
+import linhlt.user_service.dto.request.LogoutRequest;
 import linhlt.user_service.dto.response.ApiResponse;
 import linhlt.user_service.dto.response.AuthenticationResponse;
 import linhlt.user_service.dto.response.IntrospectResponse;
@@ -41,4 +42,13 @@ public class AuthenticationController {
                 .result(result)
                 .build();
     }
+
+    @PostMapping("/logout")
+    ApiResponse<Void> authenticate(@RequestBody LogoutRequest logoutRequest) throws ParseException, JOSEException {
+        authenticationService.logout(logoutRequest);
+        return ApiResponse.<Void>builder()
+                .build();
+    }
+
+
 }
