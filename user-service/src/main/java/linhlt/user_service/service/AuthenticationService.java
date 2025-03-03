@@ -7,11 +7,14 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import linhlt.user_service.dto.request.AuthenticationRequest;
 import linhlt.user_service.dto.request.IntrospectRequest;
+import linhlt.user_service.dto.request.LogoutRequest;
 import linhlt.user_service.dto.response.AuthenticationResponse;
 import linhlt.user_service.dto.response.IntrospectResponse;
+import linhlt.user_service.entity.InvalidatedToken;
 import linhlt.user_service.entity.User;
 import linhlt.user_service.exception.AppException;
 import linhlt.user_service.exception.ErrorCode;
+import linhlt.user_service.repository.InvalidatedTokenRepository;
 import linhlt.user_service.repository.UserRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +31,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.StringJoiner;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +39,7 @@ import java.util.StringJoiner;
 public class AuthenticationService {
 
     UserRepository userRepository;
+    InvalidatedTokenRepository invalidatedTokenRepository;
 
     @NonFinal
     @Value("${jwt.signerKey}")
@@ -42,12 +47,14 @@ public class AuthenticationService {
 
     public IntrospectResponse introspect(IntrospectRequest request) throws JOSEException, ParseException {
         var token = request.getToken();
-        JWSVerifier verifier = new MACVerifier(SIGNER_KEY.getBytes());
-        SignedJWT signedJWT = SignedJWT.parse(token);
-        Date expiration = signedJWT.getJWTClaimsSet().getExpirationTime();
-        var verified =  signedJWT.verify(verifier);
+        boolean inValid = true;
+        try{
+            verifyToken(token);
+        } catch (AppException e) {
+            inValid = false;
+        }
         return IntrospectResponse.builder()
-                .value( verified && expiration.after(new Date()))
+                .value(inValid)
                 .build();
     }
 
@@ -67,6 +74,32 @@ public class AuthenticationService {
                 .authenticated(true)
                 .build();
     }
+
+    public void logout(LogoutRequest logoutRequest) throws ParseException, JOSEException {
+        var signToken = verifyToken(logoutRequest.getToken());
+
+        String jit = signToken.getJWTClaimsSet().getJWTID();
+        Date expiryTime = signToken.getJWTClaimsSet().getExpirationTime();
+        InvalidatedToken invalidatedToken = InvalidatedToken.builder()
+                .id(jit)
+                .expiryTime(expiryTime)
+                .build();
+        invalidatedTokenRepository.save(invalidatedToken);
+    }
+
+    private SignedJWT verifyToken(String token) throws ParseException, JOSEException {
+        JWSVerifier verifier = new MACVerifier(SIGNER_KEY.getBytes());
+        SignedJWT signedJWT = SignedJWT.parse(token);
+        Date expiration = signedJWT.getJWTClaimsSet().getExpirationTime();
+        var verified =  signedJWT.verify(verifier);
+        if (!( verified && expiration.after(new Date())))
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+
+        if (invalidatedTokenRepository.existsById(signedJWT.getJWTClaimsSet().getJWTID()))
+            throw  new AppException(ErrorCode.UNAUTHENTICATED);
+        return signedJWT;
+    }
+
     private String generateToken(User user) {
 
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
@@ -78,6 +111,7 @@ public class AuthenticationService {
                 .expirationTime(new Date(
                         Instant.now().plus(1, ChronoUnit.HOURS).toEpochMilli()
                 ))
+                .jwtID(UUID.randomUUID().toString())
                 .claim("scope", buildScope(user))
                 .build();
         Payload payload = new Payload(jwtClaimsSet.toJSONObject());
@@ -96,7 +130,7 @@ public class AuthenticationService {
     private String buildScope(User user) {
         StringJoiner scopeJoiner = new StringJoiner(" ");
         if (!CollectionUtils.isEmpty(user.getRoles())){
-            user.getRoles().forEach(stringRole -> scopeJoiner.add(stringRole));
+//            user.getRoles().forEach(stringRole -> scopeJoiner.add(stringRole));
         }
         return scopeJoiner.toString();
     }
